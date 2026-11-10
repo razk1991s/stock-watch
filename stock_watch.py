@@ -8,6 +8,7 @@ INTERVAL_SEC = 15
 POSITIONS = [
     {"symbol": "CPRT", "buy": 32.01, "target": 36.81, "exit_to": "2026-11-18"},
     {"symbol": "PSIG", "buy": 5.02, "target": 6.53, "exit_to": "2026-11-12"},
+    {"symbol": "SOFI", "buy": 16.27, "target": 17.90, "exit_to": "2026-11-19"},
 ]
 
 def quote(symbol):

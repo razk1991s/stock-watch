@@ -1,21 +1,35 @@
 name: Stock Watch
 on:
   schedule:
-    - cron: "25 14 * * 1-5"   # 16:25 Israel
-    - cron: "55 17 * * 1-5"   # 19:55 Israel
+    - cron: "25 14 * * 1-5"   # 16:25 Israel - first half of the session
+    - cron: "55 17 * * 1-5"   # 19:55 Israel - second half + daily summary at close
+    - cron: "15 21 * * 1-5"   # 23:15 Israel - backup: summary if not sent yet
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "watch or summary"
+        default: "watch"
+permissions:
+  contents: write
+concurrency:
+  group: stock-watch
+  cancel-in-progress: false
 jobs:
   watch:
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: pip install requests
+      - run: |
+          git config user.name "stock-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - run: python stock_watch.py
         env:
           FINNHUB_KEY: ${{ secrets.FINNHUB_KEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           RUN_MINUTES: "210"
+          MODE: ${{ inputs.mode }}

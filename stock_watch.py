@@ -119,9 +119,9 @@ def closed_lines(p, c):
     diff, pc = price - p["buy"], pct(p, price)
     word = "רווח" if diff >= 0 else "הפסד"
     hit = price >= p["target"]
-    icon = "🟩" if hit else "🟥"
+    icon = "🟩" if hit else ("🔵" if diff >= 0 else "🟥")  # target / profit but missed / loss
     when = f" ב-{datetime.date.fromisoformat(c['date']):%d/%m}" if c.get("date") else ""
-    result = "✅ הגיעה ליעד" if hit else f"❌ לא הגיעה ליעד ({fmt_pct(pct(p, p['target']))})"
+    result = "✅ הגיעה ליעד" if hit else f"{'🔵' if diff >= 0 else '❌'} לא הגיעה ליעד ({fmt_pct(pct(p, p['target']))})"
     return [f"{icon} {p['symbol']}  נמכרה ב-${price:.2f}{when} · {word} {fmt_money(diff)} ({fmt_pct(pc)})",
             f"   {result}"]
 

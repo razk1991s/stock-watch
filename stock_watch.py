@@ -48,7 +48,13 @@ def notify(msg, title=None, url=None):
         if url:
             body["click"] = url  # tapping the notification opens the report
             body["actions"] = [{"action": "view", "label": "📊 פתח דוח", "url": url}]
-        requests.post("https://ntfy.sh/", json=body, timeout=10)
+        body["topic"] = NTFY_TOPIC.strip()
+        r = requests.post("https://ntfy.sh/", json=body, timeout=10)
+        print("ntfy:", r.status_code, r.text[:200])
+        if r.status_code != 200:  # fallback: the old way that worked
+            requests.post(f"https://ntfy.sh/{NTFY_TOPIC.strip()}",
+                          data=((title + "\n") if title else "").encode("utf-8") + msg.encode("utf-8"),
+                          headers={"Click": url} if url else {}, timeout=10)
     except Exception as e:
         print(f"notify error {e}")
 
@@ -227,7 +233,8 @@ def summary(state):
     except Exception as e:
         print(f"report error {e}")
 
-    state["last_summary"] = today.isoformat()
+    if ny_now().time() >= CLOSE:  # manual runs before close don't block tonight's summary
+        state["last_summary"] = today.isoformat()
     save_state(state, f"summary {today}", extra)
     notify(msg, title, url)
 

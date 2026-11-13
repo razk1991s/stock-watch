@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache">
+<title>דוח מניות</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=Heebo:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef1f5; --surface:#fff; --ink:#141a24; --muted:#5d6878; --line:#dbe1e9;
+  --accent:#2f5bd8; --accent-soft:#e3eafc;
+  --good:#12805c; --good-soft:#dcf3ea; --bad:#c2372b; --bad-soft:#fbe4e1; --warn:#a86400; --warn-soft:#fdf0d9;
+  --display:"Rubik","Heebo",system-ui,sans-serif; --body:"Heebo",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0e131b; --surface:#161d28; --ink:#e8edf4; --muted:#93a0b2; --line:#263142;
+  --accent:#7d9cff; --accent-soft:#1d2a4a;
+  --good:#45c895; --good-soft:#12322a; --bad:#ff7a6c; --bad-soft:#3a1c1a; --warn:#f0b04a; --warn-soft:#3a2a10;
+  color-scheme:dark;}}
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:760px;margin:0 auto;padding:24px 16px 48px;display:grid;gap:16px}
+.eyebrow{font-size:13px;color:var(--muted)}
+h1{font-family:var(--display);font-size:26px;margin:0}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid}
+.tile b{font-family:var(--display);font-size:22px} .tile span{font-size:13px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;position:relative;overflow:hidden}
+.card::before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:4px;background:var(--stripe)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.ticker{font-family:var(--display);font-size:22px;font-weight:700}
+.pill{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat span{display:block;font-size:12px;color:var(--muted)} .stat b{font-size:16px}
+.up{color:var(--good)} .down{color:var(--bad)} .flat{color:var(--muted)}
+.ladder{direction:ltr;position:relative;height:58px}
+.rail{position:absolute;left:0;right:0;top:26px;height:6px;border-radius:3px;background:var(--line)}
+.zone{position:absolute;top:22px;height:14px;width:6px;transform:translateX(-50%);border-radius:3px;background:var(--good)}
+.mk{direction:rtl;position:absolute;transform:translateX(-50%);font-size:11px;white-space:nowrap;display:grid;justify-items:center;gap:2px}
+.mk.buy{top:0;color:var(--muted)} .mk.buy i{width:2px;height:16px;background:var(--muted);margin-top:2px}
+.mk.cur{bottom:0;color:var(--accent);font-weight:700} .mk.cur i{order:-1;width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
+.mk.tgt{top:0;color:var(--good)}
+.box{border-radius:10px;padding:10px 12px;font-size:14px}
+.box.bad{background:var(--bad-soft)} .box.good{background:var(--good-soft)} .box.warn{background:var(--warn-soft)}
+footer{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+const R = __DATA__;
+const $ = n => "$" + n.toFixed(2);
+const fp = p => (p>0?"+":"") + p.toFixed(Math.abs(p)<0.1&&p!==0?2:1) + "%";
+const fm = x => (x>=0?"+":"-") + "$" + Math.abs(x).toFixed(2);
+const cl = p => Math.abs(p)<0.05?"flat":(p>0?"up":"down");
+const ddmm = s => s ? s.slice(8,10)+"/"+s.slice(5,7) : "";
+const look = {
+  open:["פתוחה · בחלון היציאה","var(--accent)","var(--accent-soft)"],
+  wait:["פתוחה · ממתינה לחלון","var(--warn)","var(--warn-soft)"],
+  hit:["נמכרה · הגיעה ליעד","var(--good)","var(--good-soft)"],
+  miss:["נמכרה · לא הגיעה ליעד","var(--bad)","var(--bad-soft)"],
+  decide:["הזמן נגמר בהפסד","var(--warn)","var(--warn-soft)"],
+  error:["אין מחיר","var(--muted)","var(--line)"]
+};
+function ladder(i, price){
+  const lo=Math.min(i.buy,price)*0.97, hi=Math.max(i.target,price)*1.03, x=v=>((v-lo)/(hi-lo)*100).toFixed(1)+"%";
+  return `<div class="ladder"><div class="rail"></div>
+    <div class="zone" style="left:${x(i.target)}"></div>
+    <div class="mk tgt" style="left:${x(i.target)}"><span>יעד <span class="num">${$(i.target)}</span></span></div>
+    <div class="mk buy" style="left:${x(i.buy)}"><span>קנייה <span class="num">${$(i.buy)}</span></span><i></i></div>
+    <div class="mk cur" style="left:${x(price)}"><i></i><span>${i.sold_price!=null?"מכירה":"עכשיו"} <span class="num">${$(price)}</span></span></div></div>`;
+}
+function card(i){
+  const [label,color,soft] = look[i.status];
+  const price = i.sold_price ?? i.price;
+  let body = "";
+  if (price != null){
+    const ch=(price-i.buy)/i.buy*100;
+    body += `<div class="stats">
+      <div class="stat"><span>קנייה</span><b class="num">${$(i.buy)}</b></div>
+      <div class="stat"><span>${i.sold_price!=null?"נמכרה ב־"+ddmm(i.sold_date):"מחיר אחרון"}</span><b class="num">${$(price)}</b></div>
+      <div class="stat"><span>${i.sold_price!=null?(price>=i.buy?"רווח":"הפסד"):"שינוי"}</span><b class="num ${cl(ch)}">${i.sold_price!=null?fm(price-i.buy)+" · ":""}${fp(ch)}</b></div>
+    </div>${ladder(i,price)}`;
+    const tp=(i.target-i.buy)/i.buy*100, need=(i.target-price)/price*100;
+    if (i.status==="hit") body += `<div class="box good">✅ הגיעה ליעד (<span class="num">${fp(tp)}</span>)</div>`;
+    else if (i.status==="miss") body += `<div class="box bad">❌ לא הגיעה ליעד: היה צריך <span class="num">${fp(tp)}</span>, בפועל <span class="num">${fp(ch)}</span></div>`;
+    else if (i.status==="decide") body += `<div class="box warn">חלון היציאה נגמר ואתה בהפסד. להחליט אם לצאת.</div>`;
+    else body += `<div>כדי להגיע ליעד צריך עוד <b class="num">${fp(need)}</b> תוך <b>${i.left}</b> ימי מסחר · חלון יציאה <span class="num">${ddmm(i.exit_from)}–${ddmm(i.exit_to)}</span></div>`;
+    if (i.stale) body += `<div class="box warn">⚠️ המחיר לא עדכני (מ־${ddmm(i.quote_day)})</div>`;
+  } else body = `<div class="box warn">⚠️ לא התקבל מחיר היום</div>`;
+  return `<article class="card" style="--stripe:${color}"><div class="top"><span class="ticker">${i.symbol}</span>
+    <span class="pill" style="color:${color};background:${soft}">${label}</span></div>${body}</article>`;
+}
+const closed = R.items.filter(i=>i.status==="hit"||i.status==="miss");
+const hits = closed.filter(i=>i.status==="hit").length;
+document.getElementById("app").innerHTML = `
+  <header><div class="eyebrow">סיכום יום מסחר · ${ddmm(R.date)}/${R.date.slice(0,4)}</div><h1>מעקב המלצות מניות</h1></header>
+  <section class="summary">
+    <div class="tile"><b class="num">${R.items.length}</b><span>במעקב</span></div>
+    <div class="tile"><b class="num">${R.items.length-closed.length}</b><span>פתוחות</span></div>
+    <div class="tile"><b class="num">${hits}/${closed.length}</b><span>הגיעו ליעד</span></div>
+  </section>
+  ${R.items.map(card).join("")}
+  <footer>עודכן ${R.generated} · אחוזים ממחיר הקנייה · מחירים מ־Finnhub</footer>`;
+</script>
+</body>
+</html>
